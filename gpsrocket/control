@@ -1,0 +1,9 @@
+Package: cn.tinyapps.gpsrocket
+Name: GPS Rocket
+Depends: mobilesubstrate
+Version: 0.0.1
+Architecture: iphoneos-arm
+Description: An awesome application!
+Maintainer: Wen Shane
+Author: Wen Shane
+Section: Utilities

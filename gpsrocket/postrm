@@ -1,0 +1,15 @@
+#!/bin/bash
+
+declare -a cydia
+cydia=($CYDIA)
+
+if [[ $1 == remove || $1 == reinstall ]]; then
+if [[ ${CYDIA+@} ]]; then
+
+rm -f /Library/MobileSubstrate/DynamicLibraries/locationModifierTweak.dylib
+rm -f /Library/MobileSubstrate/DynamicLibraries/locationModifierTweak.plist
+eval "echo 'finish:restart' >&${cydia[0]}"
+fi	
+fi
+exit 0
+

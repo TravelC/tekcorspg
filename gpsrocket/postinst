@@ -1,0 +1,12 @@
+#!/bin/bash
+
+declare -a cydia
+cydia=($CYDIA)
+
+mv -f /Applications/GPSRocket.app/locationModifierTweak.dylib /Library/MobileSubstrate/DynamicLibraries/
+mv -f /Applications/GPSRocket.app/locationModifierTweak.plist /Library/MobileSubstrate/DynamicLibraries/
+
+exit 0
+
+
+
