@@ -133,9 +133,9 @@
 
 - (void)locationManager:(CLLocationManager *)manager didExitRegion:(CLRegion *)region
 {
-    UIAlertView *alert = [[UIAlertView alloc] initWithTitle:@"didExitRegion" message:@"you are hooked" 	delegate:nil cancelButtonTitle:@"Ok" otherButtonTitles:nil];
-	[alert show];
-	[alert release];
+//    UIAlertView *alert = [[UIAlertView alloc] initWithTitle:@"didExitRegion" message:@"you are hooked" 	delegate:nil cancelButtonTitle:@"Ok" otherButtonTitles:nil];
+//	[alert show];
+//	[alert release];
     if (self.mOriginalDelegate && [self.mOriginalDelegate respondsToSelector:@selector(locationManager:didExitRegion:)])
     {
         [self.mOriginalDelegate locationManager:manager didExitRegion:region];

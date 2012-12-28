@@ -3,14 +3,13 @@
 declare -a cydia
 cydia=($CYDIA)
 
+if [[ $1 == remove || $1 == reinstall ]]; then
+if [[ ${CYDIA+@} ]]; then
+
 rm -f /Library/MobileSubstrate/DynamicLibraries/locationModifierTweak.dylib
 rm -f /Library/MobileSubstrate/DynamicLibraries/locationModifierTweak.plist
-
-if [[ ${CYDIA+@} ]]; then
-eval "echo 'finish:reload' >&${cydia[0]}"
-else
-echo "Haha, Please respring your device."
+eval "echo 'finish:restart' >&${cydia[0]}"
+fi	
 fi
-
 exit 0
 
