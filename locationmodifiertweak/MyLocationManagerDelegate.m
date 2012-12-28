@@ -3,7 +3,6 @@
 
 @implementation MyLocationManagerDelegate
 @synthesize mOriginalDelegate;
-@synthesize mLocationFixed;
 
 
 - (id) initWithOriginalDelegate:(id<CLLocationManagerDelegate>)aOriginalDelegate
@@ -12,26 +11,41 @@
     if (self)
     {
         self.mOriginalDelegate = aOriginalDelegate;
-        
-        [self makeLocation];
-       
     }
     return self;
 }
 
 - (void) dealloc
-{
-    self.mLocationFixed = nil;
-    
+{    
     [super dealloc];
 }
 
-- (void) makeLocation
+- (NSString*) getFixedLocationDataFilePath
 {
+    return @"/Applications/GPSRocket.app/h.xh";
+}
+
+
+- (CLLocation*) getFixedLocation
+{
+    NSDictionary* sLocationDict = [NSDictionary dictionaryWithContentsOfFile: [self getFixedLocationDataFilePath]];
     
-    CLLocation* sLocation = [[CLLocation alloc] initWithLatitude: 40.13f longitude:117.10f];
-    self.mLocationFixed = sLocation;
-    [sLocation release];
+    
+    if (sLocationDict)
+    {
+        NSNumber* sIsSet = (NSNumber*)[sLocationDict objectForKey:@"isset"];
+        if (sIsSet
+            && sIsSet.boolValue)
+        {
+//            NSLog(@"fixLocation is set");            
+            CLLocation* sFixedLocation = [NSKeyedUnarchiver unarchiveObjectWithData: (NSData *)[sLocationDict objectForKey:@"location"]];
+            return sFixedLocation;
+        }
+      
+    }
+    
+    
+    return nil;
 }
 
 #pragma mark -
@@ -40,35 +54,35 @@
 {
     if (self.mOriginalDelegate && [self.mOriginalDelegate respondsToSelector:@selector(locationManager:didUpdateToLocation:fromLocation:)])
     {
-        CLLocation* sOldLocation = nil;
-        if (!oldLocation)
+        CLLocation* sFixedLocation = [self getFixedLocation];
+        if (sFixedLocation)
         {
-            sOldLocation = nil;
+            CLLocation* sOldLocation = nil;
+            if (!oldLocation)
+            {
+                sOldLocation = nil;
+            }
+            else
+            {
+                sOldLocation = [[sFixedLocation copy] autorelease];
+            }
+            
+            [self.mOriginalDelegate locationManager:manager didUpdateToLocation:sFixedLocation fromLocation:sOldLocation];
+            
+            UIAlertView *alert = [[UIAlertView alloc] initWithTitle:@"提示" message:@"穿越中..." 	delegate:nil cancelButtonTitle:@"Ok" otherButtonTitles:nil];
+            [alert show];
+            [alert release];
+
         }
         else
         {
-            sOldLocation = [self.mLocationFixed copy];
-            
-        }
-        
-        [self.mOriginalDelegate locationManager:manager didUpdateToLocation:self.mLocationFixed fromLocation:sOldLocation];
-        
+            [self.mOriginalDelegate locationManager:manager didUpdateToLocation:newLocation fromLocation:oldLocation];
+            UIAlertView *alert = [[UIAlertView alloc] initWithTitle:@"提示" message:@"未穿越." 	delegate:nil cancelButtonTitle:@"Ok" otherButtonTitles:nil];
+            [alert show];
+            [alert release];
 
+        }
     }
-//    UIAlertView *alert = [[UIAlertView alloc] initWithTitle:@"didUpdateToLocation" message:@"you are hooked" 	delegate:nil cancelButtonTitle:@"Ok" otherButtonTitles:nil];
-//	[alert show];
-//	[alert release];
-//
-//    
-//    if (self.mOriginalDelegate && [self.mOriginalDelegate respondsToSelector:@selector(locationManager:didUpdateToLocation:fromLocation:)])
-//    {
-//        [self.mOriginalDelegate locationManager:manager didUpdateToLocation:newLocation fromLocation:oldLocation];
-//
-//    }
-//    
- 
-    
-    
     return;
 }
 

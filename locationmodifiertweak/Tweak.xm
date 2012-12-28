@@ -13,15 +13,15 @@ MyLocationManagerDelegate* mMyDelegate;
 	{
 		mMyDelegate = [[MyLocationManagerDelegate alloc] initWithOriginalDelegate:aDelegate];
     	%orig(mMyDelegate); // Call through to the original function with a custom argument.
-	    UIAlertView *alert = [[UIAlertView alloc] initWithTitle:@"setDelegate:x" message:@"you are hooked" 	delegate:nil cancelButtonTitle:@"Ok" otherButtonTitles:nil];
-		[alert show];
-		[alert release];
+	   // UIAlertView *alert = [[UIAlertView alloc] initWithTitle:@"setDelegate:x" message:@"you are hooked" 	delegate:nil cancelButtonTitle:@"Ok" otherButtonTitles:nil];
+		//[alert show];
+		//[alert release];
 	}
 	else
 	{
-	UIAlertView *alert = [[UIAlertView alloc] initWithTitle:@"setDelegate:nil" message:@"you are hooked" 	delegate:nil cancelButtonTitle:@"Ok" otherButtonTitles:nil];
-	[alert show];
-	[alert release];
+	//UIAlertView *alert = [[UIAlertView alloc] initWithTitle:@"setDelegate:nil" message:@"you are hooked" 	delegate:nil cancelButtonTitle:@"Ok" otherButtonTitles:nil];
+	//[alert show];
+	//[alert release];
 		%orig;
 	}
 
