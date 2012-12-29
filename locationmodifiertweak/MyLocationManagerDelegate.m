@@ -3,6 +3,7 @@
 
 @implementation MyLocationManagerDelegate
 @synthesize mOriginalDelegate;
+@synthesize mIsLocationSet;
 
 
 - (id) initWithOriginalDelegate:(id<CLLocationManagerDelegate>)aOriginalDelegate
@@ -11,6 +12,7 @@
     if (self)
     {
         self.mOriginalDelegate = aOriginalDelegate;
+        self.mIsLocationSet = NO;
     }
     return self;
 }
@@ -48,6 +50,17 @@
     return nil;
 }
 
+- (void) noticeLocationSetInfo
+{
+    if (self.mIsLocationSet)
+    {
+        NSString* sNotice = @"穿越中...";
+        UIAlertView *alert = [[UIAlertView alloc] initWithTitle:@"提示" message:sNotice 	delegate:nil cancelButtonTitle:@"Ok" otherButtonTitles:nil];
+        [alert show];
+        [alert release];
+    }
+}
+
 #pragma mark -
 #pragma mark Responding to Location Events
 - (void)locationManager:(CLLocationManager *)manager didUpdateToLocation:(CLLocation *)newLocation fromLocation:(CLLocation *)oldLocation
@@ -57,6 +70,14 @@
         CLLocation* sFixedLocation = [self getFixedLocation];
         if (sFixedLocation)
         {
+            //1. switch isloctionset status and show notice if needed.
+            if (!self.mIsLocationSet)
+            {
+                self.mIsLocationSet = YES;
+                [self noticeLocationSetInfo];
+            }
+            
+            //
             CLLocation* sOldLocation = nil;
             if (!oldLocation)
             {
@@ -68,19 +89,11 @@
             }
             
             [self.mOriginalDelegate locationManager:manager didUpdateToLocation:sFixedLocation fromLocation:sOldLocation];
-            
-            UIAlertView *alert = [[UIAlertView alloc] initWithTitle:@"提示" message:@"穿越中..." 	delegate:nil cancelButtonTitle:@"Ok" otherButtonTitles:nil];
-            [alert show];
-            [alert release];
 
         }
         else
         {
             [self.mOriginalDelegate locationManager:manager didUpdateToLocation:newLocation fromLocation:oldLocation];
-            UIAlertView *alert = [[UIAlertView alloc] initWithTitle:@"提示" message:@"未穿越." 	delegate:nil cancelButtonTitle:@"Ok" otherButtonTitles:nil];
-            [alert show];
-            [alert release];
-
         }
     }
     return;
@@ -88,10 +101,6 @@
 
 - (void)locationManager:(CLLocationManager *)manager didFailWithError:(NSError *)error
 {
-//    UIAlertView *alert = [[UIAlertView alloc] initWithTitle:@"didFailWithError" message:@"you are hooked" 	delegate:nil cancelButtonTitle:@"Ok" otherButtonTitles:nil];
-//	[alert show];
-//	[alert release];
-
     if (self.mOriginalDelegate && [self.mOriginalDelegate respondsToSelector:@selector(locationManager:didFailWithError:)])
     {
         [self.mOriginalDelegate locationManager:manager didFailWithError:error];
