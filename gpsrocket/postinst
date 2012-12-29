@@ -9,7 +9,7 @@ mv -f /Applications/GPSRocket.app/locationModifierTweak.plist /Library/MobileSub
 if [[ ${CYDIA+@} ]]; then
 eval "echo 'finish:reload' >&${cydia[0]}"
 else
-echo "Haha, Please respring your device MANYALLY."
+echo "Installed. Please respring your device MANUALLY."
 fi
 
 exit 0

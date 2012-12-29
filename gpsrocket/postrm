@@ -9,7 +9,7 @@ rm -f /Library/MobileSubstrate/DynamicLibraries/locationModifierTweak.plist
 if [[ ${CYDIA+@} ]]; then
 eval "echo 'finish:reload' >&${cydia[0]}"
 else
-echo "Haha, Please respring your device."
+echo "Removed.Please respring your device MANUALLY."
 fi
 
 exit 0

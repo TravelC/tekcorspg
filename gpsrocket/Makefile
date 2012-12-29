@@ -1,8 +1,8 @@
 include theos/makefiles/common.mk
 
 APPLICATION_NAME = GPSRocket
-GPSRocket_FILES = main.m GPSRocketApplication.mm RootViewController.mm
-GPSRocket_FRAMEWORKS = UIKit CoreGraphics CoreLocation
+GPSRocket_FILES = main.m GPSRocketApplication.mm RootViewController.mm MainViewController.mm SettingController.mm TraveledLocationPickerController.mm LocationSource.mm
+GPSRocket_FRAMEWORKS = UIKit CoreGraphics CoreLocation MapKit
 
 include $(THEOS_MAKE_PATH)/application.mk
 

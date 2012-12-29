@@ -3,6 +3,7 @@
 
 @implementation MyLocationManagerDelegate
 @synthesize mOriginalDelegate;
+@synthesize mAlwaysNeedsTrueLocation;
 @synthesize mIsLocationSet;
 
 
@@ -12,6 +13,18 @@
     if (self)
     {
         self.mOriginalDelegate = aOriginalDelegate;
+        
+        NSString* sClassName = NSStringFromClass([self.mOriginalDelegate class]);
+        NSLog(@"class name: %@", sClassName);
+        if ([sClassName isEqualToString: @"TrueLocationSource20121229"]) //"TrueLocationSource20121229" is the class name of the delegate who need the true location in GPSRocket.app.
+        {
+            self.mAlwaysNeedsTrueLocation = YES;
+        }
+        else
+        {
+            self.mAlwaysNeedsTrueLocation = NO;
+        }
+        
         self.mIsLocationSet = NO;
     }
     return self;
@@ -68,7 +81,12 @@
     if (self.mOriginalDelegate && [self.mOriginalDelegate respondsToSelector:@selector(locationManager:didUpdateToLocation:fromLocation:)])
     {
         CLLocation* sFixedLocation = [self getFixedLocation];
-        if (sFixedLocation)
+        if (self.mAlwaysNeedsTrueLocation
+            ||!sFixedLocation)
+        {
+            [self.mOriginalDelegate locationManager:manager didUpdateToLocation:newLocation fromLocation:oldLocation];
+        }
+        else
         {
             //1. switch isloctionset status and show notice if needed.
             if (!self.mIsLocationSet)
@@ -90,10 +108,6 @@
             
             [self.mOriginalDelegate locationManager:manager didUpdateToLocation:sFixedLocation fromLocation:sOldLocation];
 
-        }
-        else
-        {
-            [self.mOriginalDelegate locationManager:manager didUpdateToLocation:newLocation fromLocation:oldLocation];
         }
     }
     return;

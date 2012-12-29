@@ -1,8 +1,8 @@
-#import "RootViewController.h"
+#import "MainViewController.h"
 
 @interface GPSRocketApplication: UIApplication <UIApplicationDelegate> {
 	UIWindow *_window;
-	RootViewController *_viewController;
+	MainViewController *_viewController;
 }
 @property (nonatomic, retain) UIWindow *window;
 @end
@@ -11,7 +11,7 @@
 @synthesize window = _window;
 - (void)applicationDidFinishLaunching:(UIApplication *)application {
 	_window = [[UIWindow alloc] initWithFrame:[[UIScreen mainScreen] bounds]];
-	_viewController = [[RootViewController alloc] init];
+	_viewController = [[UINavigationController alloc] initWithRootViewController: [[[MainViewController alloc] init] autorelease]];
 	[_window addSubview:_viewController.view];
 	[_window makeKeyAndVisible];
 }
