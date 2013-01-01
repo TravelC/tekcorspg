@@ -1,53 +1,26 @@
 #import "LocationSource.h"
-
+#import "LocationTravelingService.h"
 
 
 @implementation LocationSource
-@synthesize mLocationManager;
-@synthesize mMostRecentLocation;
-
-- (id) init
-{
-    self = [super init];
-    if (self)
-    {
-        self.mLocationManager = [[[CLLocationManager alloc] init] autorelease];
-        self.mLocationManager.delegate = self;
-        [self.mLocationManager startUpdatingLocation];
-    }
-    return self;
-}
 
 - (void) dealloc
 {
     
-    [self.mLocationManager stopUpdatingLocation];
-    self.mLocationManager = nil;
-    self.mMostRecentLocation = nil;
+    [mMostRecentLocation release];
     
     [super dealloc];
 }
 
 - (CLLocation*) getMostRecentLocation
 {
-    return self.mMostRecentLocation;
+    return mMostRecentLocation;
 }
-
-#pragma mark - CLLocationManagerDelegate methods
-- (void)locationManager:(CLLocationManager *)manager didUpdateToLocation:(CLLocation *)newLocation fromLocation:(CLLocation *)oldLocation
-{
-    self.mMostRecentLocation = newLocation;
-}
-
-//- (void)locationManager:(CLLocationManager *)manager didFailWithError:(NSError *)error
-//{
-//    return;
-//}
 
 
 + (LocationSource*) getRegularLocationSource
 {
-    LocationSource* sRegularLocationSource = [[[LocationSource alloc] init] autorelease];
+    LocationSource* sRegularLocationSource = [[[TravelingLocationSource alloc] init] autorelease];
     return sRegularLocationSource;
 }
 
@@ -62,6 +35,72 @@
 
 #pragma mark - TrueLocationSource20121229 class
 @implementation TrueLocationSource20121229
+@synthesize mLocationManager;
+
+- (id) init
+{
+    self = [super init];
+    if (self)
+    {
+        self.mLocationManager = [[[CLLocationManager alloc] init] autorelease];
+        self.mLocationManager.delegate = self;
+        [self.mLocationManager startUpdatingLocation];
+    }
+    return self;
+}
+
+
+- (void) dealloc
+{
+    [self.mLocationManager stopUpdatingLocation];
+    self.mLocationManager = nil;
+    
+    [super dealloc];
+}
+
+- (CLLocation*) getMostRecentLocation
+{
+    if (!mMostRecentLocation)
+    {
+        mMostRecentLocation = [self.mLocationManager.location retain];
+    }
+    
+    return mMostRecentLocation;
+}
+
+
+
+#pragma mark - CLLocationManagerDelegate methods
+- (void)locationManager:(CLLocationManager *)manager didUpdateToLocation:(CLLocation *)newLocation fromLocation:(CLLocation *)oldLocation
+{
+    [mMostRecentLocation release];
+    mMostRecentLocation = [newLocation retain];
+}
 
 @end
+
+
+#pragma mark - TravelingLocationSource class
+
+@implementation TravelingLocationSource
+- (id) init
+{
+    self = [super init];
+    if (self)
+    {
+        //
+    }
+    return self;
+}
+
+- (CLLocation*) getMostRecentLocation
+{
+    [mMostRecentLocation release];
+    mMostRecentLocation = [[LocationTravelingService getFixedLocation] retain];
+    return mMostRecentLocation;
+}
+
+
+@end
+
 
