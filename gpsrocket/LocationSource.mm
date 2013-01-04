@@ -3,12 +3,17 @@
 
 
 @implementation LocationSource
+@synthesize mDelegate;
+
 
 - (void) dealloc
 {
-    
-    [mMostRecentLocation release];
-    
+    if (mMostRecentLocation)
+    {
+        [mMostRecentLocation release];
+        mMostRecentLocation = nil;
+    }
+
     [super dealloc];
 }
 
@@ -44,6 +49,7 @@
     {
         self.mLocationManager = [[[CLLocationManager alloc] init] autorelease];
         self.mLocationManager.delegate = self;
+        self.mLocationManager.desiredAccuracy = kCLLocationAccuracyBestForNavigation;
         [self.mLocationManager startUpdatingLocation];
     }
     return self;
@@ -73,8 +79,24 @@
 #pragma mark - CLLocationManagerDelegate methods
 - (void)locationManager:(CLLocationManager *)manager didUpdateToLocation:(CLLocation *)newLocation fromLocation:(CLLocation *)oldLocation
 {
-    [mMostRecentLocation release];
-    mMostRecentLocation = [newLocation retain];
+    
+    
+    if (newLocation.coordinate.latitude != mMostRecentLocation.coordinate.latitude
+        || newLocation.coordinate.longitude !=  mMostRecentLocation.coordinate.longitude)
+    {
+        [mMostRecentLocation release];
+        mMostRecentLocation = [newLocation retain];
+        NSLog(@"xxxxxxxxxxxxx");
+
+        if (self.mDelegate
+            && [self.mDelegate respondsToSelector:@selector(locationSource:withNewLocation:oldLocation:)])
+        {
+            NSLog(@"yyyyyyyyy");
+
+            [self.mDelegate locationSource:self withNewLocation:newLocation oldLocation:oldLocation];
+        }
+    }
+    
 }
 
 @end

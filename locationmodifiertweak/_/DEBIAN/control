@@ -1,10 +1,10 @@
 Package: cn.tinyapps.locationmodifiertweak
 Name: locationModifierTweak
 Depends: mobilesubstrate
-Version: 0.0.1-61
+Version: 0.0.1-99
 Architecture: iphoneos-arm
 Description: An awesome MobileSubstrate tweak!
 Maintainer: Wen Shane
 Author: Wen Shane
 Section: Tweaks
-Installed-Size: 20
+Installed-Size: 28

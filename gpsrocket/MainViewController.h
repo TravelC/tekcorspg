@@ -4,8 +4,9 @@
 #import "LocationSource.h"
 #import "MyLocationAnnotation.h"
 
-
-@interface MainViewController: UIViewController<MKMapViewDelegate>
+//MKReverseGeocoderDelegate
+//CLGeocoder
+@interface MainViewController: UIViewController<MKMapViewDelegate, LocationSourceDelegate>
 {
     MKMapView* mMapView;
     
@@ -17,6 +18,8 @@
     
     MyLocationAnnotation*  mDeviceLocationAnnotation;
     MyLocationAnnotation*  mTraveledLocationAnnotation;
+    
+    MKCircle* mCircle;
 
     LocationSource* mRegularLocationSource;
     LocationSource* mTrueLocationSource;
@@ -33,17 +36,28 @@
 @property (nonatomic, retain)  MyLocationAnnotation*  mDeviceLocationAnnotation;
 @property (nonatomic, retain)  MyLocationAnnotation*  mTraveledLocationAnnotation;
 
+@property (nonatomic, retain)  MKCircle* mCircle;
+
 @property (nonatomic, retain)  LocationSource* mRegularLocationSource;
 @property (nonatomic, retain)  LocationSource* mTrueLocationSource;
 
 @property (nonatomic, assign)  BOOL mAppearedBefore;
 
 - (void) refreshAll;
+
+- (BOOL) canSetTravelingLocationAt:(CLLocation*)aLocation;
+
+
 - (void) addAnnotations;
+- (void) addOverlay;
+
 
 - (void) centerTraveledLocationIfSet;
 - (void) centerDeviceLocation;
-- (void) centerTraveledAndDeviceLocation;
+- (void) showGlobalView;
+
+- (void) centerDeviceLocationWithSelection:(BOOL)aSelecting;
+- (void) centerTraveledLocationIfSetWithSelection:(BOOL)aSelecting;
 
 - (void) goToLocation: (CLLocation*)aLocation;
 - (void) goToLocation: (CLLocation*)aLocation span:(MKCoordinateSpan)aSpan animated:(BOOL)animated;

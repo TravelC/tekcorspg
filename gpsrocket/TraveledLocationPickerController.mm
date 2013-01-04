@@ -24,8 +24,6 @@
 	UIView* sView = [[[UIView alloc] initWithFrame:[[UIScreen mainScreen] applicationFrame]] autorelease];
     sView.backgroundColor = [UIColor whiteColor];
     self.view = sView;
-    
-    
 }
 
 - (void) viewDidLoad

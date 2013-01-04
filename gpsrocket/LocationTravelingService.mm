@@ -23,6 +23,7 @@ static BOOL S_ISSET = -1;
 {
     NSMutableDictionary* sLocationDict = [NSMutableDictionary dictionaryWithCapacity: 2];
     
+    [sLocationDict setValue:[NSDate date] forKey:@"timestamp"];
     [sLocationDict setValue: [NSNumber numberWithBool:aIsSet] forKey:@"isset"];
     //CLLocation in NSDictionary cannot be written to file. cos,
     //This method recursively validates that all the contained objects are property list objects (instances of NSData, NSDate, NSNumber, NSString, NSArray, or NSDictionary) before writing out the file, and returns NO if all the objects are not property list objects, since the resultant file would not be a valid property list.

@@ -2,17 +2,57 @@
 #import <CoreLocation/CLLocationManager.h>
 
 
+
+@interface FixedLocationData : NSObject
+{
+    NSDate* mTimestamp;
+    BOOL mIsSet;
+    CLLocation* mFixedLocation;
+}
+@property (nonatomic, retain)   NSDate* mTimestamp;
+@property (nonatomic, assign)   BOOL mIsSet;
+@property (nonatomic, retain)   CLLocation* mFixedLocation;
+
+
+@end
+
+
+
+//////
+@interface LocationManager_Delegate : NSObject
+{
+    CLLocationManager* mLocationManager;
+    id<CLLocationManagerDelegate> mDelegate;
+    BOOL mNeedsTrueLocation;
+}
+@property (nonatomic, retain) CLLocationManager* mLocationManager;
+@property (nonatomic, retain) id<CLLocationManagerDelegate> mDelegate;
+@property (nonatomic, assign) BOOL mNeedsTrueLocation;
+
++ (LocationManager_Delegate*) getNewInstance;
+@end
+
+///////
+
 @interface MyLocationManagerDelegate : NSObject<CLLocationManagerDelegate>
 {
-    id<CLLocationManagerDelegate> mOriginalDelegate;
-    BOOL mAlwaysNeedsTrueLocation;
-    BOOL mIsLocationSet;
+    NSMutableArray* mOriginalDelegates;
+    NSDate* mTimestamp;
+    NSTimer* mFixedLocationOnoffSnifferTime;
 }
 
-@property (nonatomic, assign) id<CLLocationManagerDelegate> mOriginalDelegate;
-@property (nonatomic, assign) BOOL mAlwaysNeedsTrueLocation;
-@property (nonatomic, assign) BOOL mIsLocationSet;
+@property (nonatomic, retain) NSMutableArray* mOriginalDelegates;
+@property (nonatomic, retain) NSDate* mTimestamp;
+@property (nonatomic, retain) NSTimer* mFixedLocationOnoffSnifferTime;
 
-- (id) initWithOriginalDelegate:(id<CLLocationManagerDelegate>)aOriginalDelegate;
 
+
+- (void) addOriginalDelegate: (id<CLLocationManagerDelegate>)aDelegate LocationManager: (CLLocationManager*) aLocationManager;
+//- (void) removeOriginalDelegate:(id<CLLocationManagerDelegate>)aDelegate;
+- (void) removeOriginalDelegateByLocationManager:(CLLocationManager*) aLocationManager;
+
+- (BOOL) needsTrueLocationForLocationManager:(CLLocationManager*) aLocationManager;
+
+- (CLLocation*) getFixedLocation;
+- (FixedLocationData*) getFixedLocationData;
 @end
