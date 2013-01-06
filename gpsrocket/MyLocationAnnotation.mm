@@ -63,13 +63,14 @@
 // optional
 - (NSString *)subtitle
 {
-    if (self.mGeoInfo)
+    if (self.mGeoInfo
+        && self.mGeoInfo.length > 0)
     {
         return self.mGeoInfo;
     }
     else
     {
-        NSString* sLocation = [NSString stringWithFormat:@"经度：%.4f \t 纬度：%.4f", self.coordinate.longitude, self.coordinate.latitude];
+        NSString* sLocation = [NSString stringWithFormat:@"%@：%.4f \t %@：%.4f",NSLocalizedString(@"Longitude", nil), self.coordinate.longitude, NSLocalizedString(@"Latitude", nil), self.coordinate.latitude];
         return sLocation;
     }
 }

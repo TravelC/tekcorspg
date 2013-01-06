@@ -22,21 +22,35 @@ typedef NSUInteger SVProgressHUDMaskType;
 
 @interface SVProgressHUD : UIView
 {
-//    SVProgressHUDMaskType maskType;
-//    NSTimer *fadeOutTimer;
-//    UIWindow *overlayWindow;
-}
+    UIWindow* mOrignalKeyWindow;;
 
-@property (nonatomic, readwrite) SVProgressHUDMaskType maskType;
+    
+    SVProgressHUDMaskType maskType;
+    NSTimer *fadeOutTimer;
+    UIWindow *overlayWindow;
+    
+    UIView *hudView;
+    UILabel *stringLabel;
+    UIImageView *imageView;
+    UIActivityIndicatorView *spinnerView;
+    CGFloat visibleKeyboardHeight;
+}
+@property (nonatomic, retain) UIWindow *mOrignalKeyWindow;
+
+
+@property (nonatomic, assign) SVProgressHUDMaskType maskType;
 @property (nonatomic, retain) NSTimer *fadeOutTimer;
 
-@property (nonatomic, retain, readonly) UIWindow *overlayWindow;
-@property (nonatomic, retain, readonly) UIView *hudView;
-@property (nonatomic, retain, readonly) UILabel *stringLabel;
-@property (nonatomic, retain, readonly) UIImageView *imageView;
-@property (nonatomic, retain, readonly) UIActivityIndicatorView *spinnerView;
+@property (nonatomic, retain) UIWindow *overlayWindow;
+@property (nonatomic, retain) UIView *hudView;
+@property (nonatomic, retain) UILabel *stringLabel;
+@property (nonatomic, retain) UIImageView *imageView;
+@property (nonatomic, retain) UIActivityIndicatorView *spinnerView;
 
-@property (nonatomic, readonly) CGFloat visibleKeyboardHeight;
+@property (nonatomic, assign) CGFloat visibleKeyboardHeight;
+
+- (void) constructAllViews;
+
 
 - (void)showWithStatus:(NSString*)string maskType:(SVProgressHUDMaskType)hudMaskType networkIndicator:(BOOL)show;
 - (void)setStatus:(NSString*)string;

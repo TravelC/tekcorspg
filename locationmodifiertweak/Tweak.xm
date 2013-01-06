@@ -21,7 +21,9 @@ static MyLocationManagerDelegate* mMyDelegate = nil;
 {
 	if (aDelegate)
 	{
+	#ifdef DEBUG
 	NSLog(@"setDelegate:not nil");
+	#endif
 	
 		[mMyDelegate addOriginalDelegate:aDelegate LocationManager: self];
 //		[mMyDelegate forceFixedLocationUpdateForLocationManager:self];
@@ -29,7 +31,9 @@ static MyLocationManagerDelegate* mMyDelegate = nil;
 	}
 	else
 	{
+	#ifdef DEBUG
 	NSLog(@"setDelegate:nil");
+	#endif
 	
 		[mMyDelegate removeOriginalDelegateByLocationManager:self];
 		%orig;
@@ -54,12 +58,16 @@ static MyLocationManagerDelegate* mMyDelegate = nil;
 		if (sFixedLocationData
 			&& sFixedLocationData.mIsSet)
 		{
+		#ifdef DEBUG
 		NSLog(@"location:fixed");
+		#endif
 			return sFixedLocationData.mFixedLocation;
 		}
 		else
 		{
+		#ifdef DEBUG
 		NSLog(@"location:orig");
+		#endif
 		
 			return %orig;	
 		}

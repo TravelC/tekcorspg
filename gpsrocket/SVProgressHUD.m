@@ -40,6 +40,8 @@
 
 @synthesize overlayWindow, hudView, maskType, fadeOutTimer, stringLabel, imageView, spinnerView, visibleKeyboardHeight;
 
+@synthesize mOrignalKeyWindow;
+
 
 + (void) setBackgroudColorForHudView: (UIColor*) aBGColor
 {
@@ -47,6 +49,14 @@
 }
 
 - (void)dealloc {
+    self.mOrignalKeyWindow = nil;
+    self.overlayWindow = nil;
+    self.hudView = nil;
+    self.stringLabel = nil;
+    self.imageView = nil;
+    self.spinnerView = nil;
+    
+    [self.fadeOutTimer invalidate];
 	self.fadeOutTimer = nil;
     [[NSNotificationCenter defaultCenter] removeObserver:self];
     
@@ -216,14 +226,14 @@
 		self.spinnerView.center = CGPointMake(ceil(CGRectGetWidth(self.hudView.bounds)/2)+0.5, ceil(self.hudView.bounds.size.height/2)+0.5);
 }
 
-- (void)setFadeOutTimer:(NSTimer *)newTimer {
-    
-    if(fadeOutTimer)
-        [fadeOutTimer invalidate], fadeOutTimer = nil;
-    
-    if(newTimer)
-        fadeOutTimer = newTimer;
-}
+//- (void)setFadeOutTimer:(NSTimer *)newTimer {
+//    
+//    if(fadeOutTimer)
+//        [fadeOutTimer invalidate], fadeOutTimer = nil;
+//    
+//    if(newTimer)
+//        fadeOutTimer = newTimer;
+//}
 
 
 - (void)registerNotifications {
@@ -345,23 +355,38 @@
 
 - (void)showWithStatus:(NSString*)string maskType:(SVProgressHUDMaskType)hudMaskType networkIndicator:(BOOL)show {
     dispatch_async(dispatch_get_main_queue(), ^{
-        if(!self.superview)
-            [self.overlayWindow addSubview:self];
         
-        self.fadeOutTimer = nil;
+        [self constructAllViews];
+        
+//        if(!self.superview)
+//            [self.overlayWindow addSubview:self];
+        
+
+        if (self.fadeOutTimer)
+        {
+            [self.fadeOutTimer invalidate];
+            self.fadeOutTimer = nil;
+        }
+
         self.imageView.hidden = YES;
+
         self.maskType = hudMaskType;
-        
+
         [self setStatus:string];
+
         [self.spinnerView startAnimating];
-        
+
         if(self.maskType != SVProgressHUDMaskTypeNone) {
             self.overlayWindow.userInteractionEnabled = YES;
         } else {
             self.overlayWindow.userInteractionEnabled = NO;
         }
+
+        self.mOrignalKeyWindow = [UIApplication sharedApplication].keyWindow;
+
         
         [self.overlayWindow makeKeyAndVisible];
+        
         [self positionHUD:nil];
         
         if(self.alpha != 1) {
@@ -402,6 +427,7 @@
         [self setStatus:string];
         [self.spinnerView stopAnimating];
         
+        
         self.fadeOutTimer = [NSTimer scheduledTimerWithTimeInterval:seconds target:self selector:@selector(dismiss) userInfo:nil repeats:NO];
     });
 }
@@ -416,28 +442,36 @@
                              self.hudView.transform = CGAffineTransformScale(self.hudView.transform, 0.8, 0.8);
                              self.alpha = 0;
                          }
-                         completion:^(BOOL finished){ 
+                         completion:^(BOOL finished){
+                             
                              if(self.alpha == 0) {
                                  [[NSNotificationCenter defaultCenter] removeObserver:self];
+
                                  [hudView removeFromSuperview];
                                  hudView = nil;
                                  
+
                                  // Make sure to remove the overlay window from the list of windows
                                  // before trying to find the key window in that same list
                                  NSMutableArray *windows = [[NSMutableArray alloc] initWithArray:[UIApplication sharedApplication].windows];
-                                 [windows removeObject:overlayWindow];
-                                 overlayWindow = nil;
+                                 [windows removeObject:self.overlayWindow];
+                                 self.overlayWindow = nil;
+               
                                  
-                                 [windows enumerateObjectsWithOptions:NSEnumerationReverse usingBlock:^(struct objc_object *window, NSUInteger idx, BOOL *stop) {
-                                   if([window isKindOfClass:[UIWindow class]] && ((UIWindow*)window).windowLevel == UIWindowLevelNormal) {
-                                     [window makeKeyWindow];
-                                     *stop = YES;
-                                   }
-                                 }];
+                                 [self.mOrignalKeyWindow makeKeyAndVisible];
+                    //code below is problematic, identifying the wrong orignal key window, so we tag the orignal key window and make it key and visible after dismissed.
+//                                 [windows enumerateObjectsWithOptions:NSEnumerationReverse usingBlock:^(struct objc_object *window, NSUInteger idx, BOOL *stop) {
+//                                   if([window isKindOfClass:[UIWindow class]] && ((UIWindow*)window).windowLevel == UIWindowLevelNormal) {
+//                                       NSLog(@"make key window");
+// 
+//                                     [window makeKeyWindow];
+//                                     *stop = YES;
+//                                   }
+//                                 }];
                                  
                                  // uncomment to make sure UIWindow is gone from app.windows
-                                 //NSLog(@"%@", [UIApplication sharedApplication].windows);
-                                 //NSLog(@"keyWindow = %@", [UIApplication sharedApplication].keyWindow);
+//                                 NSLog(@"%@", [UIApplication sharedApplication].windows);
+//                                 NSLog(@"keyWindow = %@", [UIApplication sharedApplication].keyWindow);
                              }
                          }];
     });
@@ -452,71 +486,183 @@
 
 #pragma mark - Getters
 
-- (UIWindow *)overlayWindow {
-    if(!overlayWindow) {
-        overlayWindow = [[UIWindow alloc] initWithFrame:[UIScreen mainScreen].bounds];
-        overlayWindow.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
-        overlayWindow.backgroundColor = [UIColor clearColor];
-        overlayWindow.userInteractionEnabled = NO;
-    }
-    return overlayWindow;
+- (UIWindow*)constructOverlayWindow
+{
+    UIWindow* sOverlayWinddow = [[[UIWindow alloc] initWithFrame:[UIScreen mainScreen].bounds] autorelease];
+    sOverlayWinddow.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
+    sOverlayWinddow.backgroundColor = [UIColor clearColor];
+    sOverlayWinddow.userInteractionEnabled = NO;
+
+    return sOverlayWinddow;
+
 }
 
-- (UIView *)hudView {
-    if(!hudView) {
-        hudView = [[UIView alloc] initWithFrame:CGRectZero];
-        hudView.layer.cornerRadius = 10;
-		hudView.backgroundColor = [UIColor colorWithWhite:0 alpha:0.8];
-        hudView.autoresizingMask = (UIViewAutoresizingFlexibleBottomMargin | UIViewAutoresizingFlexibleTopMargin |
+- (UIView *)constructHudView {
+     UIView*   sHudView = [[[UIView alloc] initWithFrame:CGRectZero] autorelease];
+        sHudView.layer.cornerRadius = 10;
+		sHudView.backgroundColor = [UIColor colorWithWhite:0 alpha:0.8];
+        sHudView.autoresizingMask = (UIViewAutoresizingFlexibleBottomMargin | UIViewAutoresizingFlexibleTopMargin |
                                     UIViewAutoresizingFlexibleRightMargin | UIViewAutoresizingFlexibleLeftMargin);
+    
+    return sHudView;
+}
+
+- (UILabel *)constructStringLabel {
+
+    UILabel* sStringLabel = [[[UILabel alloc] initWithFrame:CGRectZero] autorelease];
+		sStringLabel.textColor = [UIColor whiteColor];
+		sStringLabel.backgroundColor = [UIColor clearColor];
+		sStringLabel.adjustsFontSizeToFitWidth = YES;
+		sStringLabel.textAlignment = UITextAlignmentCenter;
+		sStringLabel.baselineAdjustment = UIBaselineAdjustmentAlignCenters;
+		sStringLabel.font = [UIFont boldSystemFontOfSize:16];
+		sStringLabel.shadowColor = [UIColor blackColor];
+		sStringLabel.shadowOffset = CGSizeMake(0, -1);
+        sStringLabel.numberOfLines = 0;
+    
+    
+    return sStringLabel;
+}
+
+- (UIImageView *)constructImageView {
+       UIImageView* sImageView = [[[UIImageView alloc] initWithFrame:CGRectMake(0, 0, 28, 28)] autorelease];
+    
+    return sImageView;
+}
+
+- (UIActivityIndicatorView *)constructSpinnerView
+{
+    UIActivityIndicatorView* sSpinnerView = [[[UIActivityIndicatorView alloc] initWithActivityIndicatorStyle:UIActivityIndicatorViewStyleWhiteLarge] autorelease];
+    sSpinnerView.hidesWhenStopped = YES;
+    sSpinnerView.bounds = CGRectMake(0, 0, 37, 37);
+    
+    return sSpinnerView;
+}
+
+- (void) constructAllViews
+{
+    [self.overlayWindow removeFromSuperview];
+    self.overlayWindow = nil;
+    [self.hudView removeFromSuperview];
+    self.hudView = nil;
+    [self.stringLabel removeFromSuperview];
+    self.stringLabel = nil;
+    [self.imageView removeFromSuperview];
+    self.imageView = nil;
+    [self.spinnerView removeFromSuperview];
+    self.spinnerView = nil;
+    
+     if (!self.overlayWindow)
+     {
+         self.overlayWindow = [self constructOverlayWindow];
+     }
+    
+    if (!self.hudView)
+    {
+        self.hudView = [self constructHudView];
+//        if (!self.hudView.superview)
+        {
+            [self addSubview:self.hudView];
+        }
+
+    }
+    
+    if (!self.stringLabel)
+    {
+        self.stringLabel  = [self constructStringLabel];
+//        if(!self.stringLabel.superview)
+            [self.hudView addSubview:self.stringLabel];
+    }
+    
+    if (!self.imageView)
+    {
+        self.imageView = [self constructImageView];
+//        if(!self.imageView.superview)
+            [self.hudView addSubview:self.imageView];
         
-        [self addSubview:hudView];
-    }
-    return hudView;
-}
-
-- (UILabel *)stringLabel {
-    if (stringLabel == nil) {
-        stringLabel = [[UILabel alloc] initWithFrame:CGRectZero];
-		stringLabel.textColor = [UIColor whiteColor];
-		stringLabel.backgroundColor = [UIColor clearColor];
-		stringLabel.adjustsFontSizeToFitWidth = YES;
-		stringLabel.textAlignment = UITextAlignmentCenter;
-		stringLabel.baselineAdjustment = UIBaselineAdjustmentAlignCenters;
-		stringLabel.font = [UIFont boldSystemFontOfSize:16];
-		stringLabel.shadowColor = [UIColor blackColor];
-		stringLabel.shadowOffset = CGSizeMake(0, -1);
-        stringLabel.numberOfLines = 0;
     }
     
-    if(!stringLabel.superview)
-        [self.hudView addSubview:stringLabel];
-    
-    return stringLabel;
-}
-
-- (UIImageView *)imageView {
-    if (imageView == nil)
-        imageView = [[UIImageView alloc] initWithFrame:CGRectMake(0, 0, 28, 28)];
-    
-    if(!imageView.superview)
-        [self.hudView addSubview:imageView];
-    
-    return imageView;
-}
-
-- (UIActivityIndicatorView *)spinnerView {
-    if (spinnerView == nil) {
-        spinnerView = [[UIActivityIndicatorView alloc] initWithActivityIndicatorStyle:UIActivityIndicatorViewStyleWhiteLarge];
-		spinnerView.hidesWhenStopped = YES;
-		spinnerView.bounds = CGRectMake(0, 0, 37, 37);
+    if (!self.spinnerView)
+    {
+        self.spinnerView = [self constructSpinnerView];
+//        if(!self.spinnerView.superview)
+            [self.hudView addSubview:self.spinnerView];
     }
     
-    if(!spinnerView.superview)
-        [self.hudView addSubview:spinnerView];
     
-    return spinnerView;
+    [self.overlayWindow addSubview: self];
+
+    return;
+
 }
+
+
+
+//- (UIWindow *)overlayWindow {
+//    if(!overlayWindow) {
+//        overlayWindow = [[UIWindow alloc] initWithFrame:[UIScreen mainScreen].bounds];
+//        overlayWindow.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
+//        overlayWindow.backgroundColor = [UIColor clearColor];
+//        overlayWindow.userInteractionEnabled = NO;
+//    }
+//    return overlayWindow;
+//}
+
+//- (UIView *)hudView {
+//    if(!hudView) {
+//        hudView = [[UIView alloc] initWithFrame:CGRectZero];
+//        hudView.layer.cornerRadius = 10;
+//		hudView.backgroundColor = [UIColor colorWithWhite:0 alpha:0.8];
+//        hudView.autoresizingMask = (UIViewAutoresizingFlexibleBottomMargin | UIViewAutoresizingFlexibleTopMargin |
+//                                    UIViewAutoresizingFlexibleRightMargin | UIViewAutoresizingFlexibleLeftMargin);
+//        
+//        [self addSubview:hudView];
+//    }
+//    return hudView;
+//}
+//
+//- (UILabel *)stringLabel {
+//    if (stringLabel == nil) {
+//        stringLabel = [[UILabel alloc] initWithFrame:CGRectZero];
+//		stringLabel.textColor = [UIColor whiteColor];
+//		stringLabel.backgroundColor = [UIColor clearColor];
+//		stringLabel.adjustsFontSizeToFitWidth = YES;
+//		stringLabel.textAlignment = UITextAlignmentCenter;
+//		stringLabel.baselineAdjustment = UIBaselineAdjustmentAlignCenters;
+//		stringLabel.font = [UIFont boldSystemFontOfSize:16];
+//		stringLabel.shadowColor = [UIColor blackColor];
+//		stringLabel.shadowOffset = CGSizeMake(0, -1);
+//        stringLabel.numberOfLines = 0;
+//    }
+//    
+//    if(!stringLabel.superview)
+//        [self.hudView addSubview:stringLabel];
+//    
+//    return stringLabel;
+//}
+//
+//- (UIImageView *)imageView {
+//    if (imageView == nil)
+//        imageView = [[UIImageView alloc] initWithFrame:CGRectMake(0, 0, 28, 28)];
+//    
+//    if(!imageView.superview)
+//        [self.hudView addSubview:imageView];
+//    
+//    return imageView;
+//}
+//
+//- (UIActivityIndicatorView *)spinnerView {
+//    if (spinnerView == nil) {
+//        spinnerView = [[UIActivityIndicatorView alloc] initWithActivityIndicatorStyle:UIActivityIndicatorViewStyleWhiteLarge];
+//		spinnerView.hidesWhenStopped = YES;
+//		spinnerView.bounds = CGRectMake(0, 0, 37, 37);
+//    }
+//    
+//    if(!spinnerView.superview)
+//        [self.hudView addSubview:spinnerView];
+//    
+//    return spinnerView;
+//}
 
 - (CGFloat)visibleKeyboardHeight {
         

@@ -62,7 +62,7 @@
     CGFloat sPosY = 30;
     
     //0. icon
-    UIImage* sImage = [UIImage imageNamed:@"Icon-72_Rounded.png"];
+    UIImage* sImage = [UIImage imageNamed:@"Icon-72.png"];
     UIImageView* sImageView = [[UIImageView alloc]initWithImage:sImage];
     sImageView.center = CGPointMake(self.view.center.x, sImageView.center.y+sPosY);
     [self.view addSubview:sImageView];
@@ -193,6 +193,7 @@
             sCell.textLabel.text = NSLocalizedString(@"Version", nil);
             sCell.detailTextLabel.text = [[NSBundle mainBundle] objectForInfoDictionaryKey: @"CFBundleVersion"];
             sCell.accessoryType = UITableViewCellAccessoryNone;
+            sCell.selectionStyle = UITableViewCellSelectionStyleNone;
         }
         else
         {
@@ -249,11 +250,12 @@
         }
         else if (sRow == 1)
         {
+            [tableView deselectRowAtIndexPath:indexPath animated:NO];
             if (!self.mIsCheckingUpdate)
             {
                 self.mIsCheckingUpdate = YES;
                 [SVProgressHUD showWithStatus:NSLocalizedString(@"Checking", nil) maskType:SVProgressHUDMaskTypeClear];
-                [SVProgressHUD setBackgroudColorForHudView:[UIColor grayColor]];
+                [SVProgressHUD setBackgroudColorForHudView:[UIColor lightGrayColor]];
     
                 [MobClick checkUpdateWithDelegate:self selector:@selector(updateCheckCallBack:)];
 
@@ -281,6 +283,8 @@
     {
         if (sRow == 0)
         {
+            [tableView deselectRowAtIndexPath: indexPath animated:NO];
+
             UIViewController* sViewController = [[UIViewController alloc]init];
             [UMFeedback showFeedback:self withAppkey:APP_KEY_UMENG];
             [sViewController release];
@@ -320,6 +324,7 @@
             //note that the display of alertview must take place on main thread, otherwise it loads very slowly.
             [self performSelectorOnMainThread:@selector(showNewUpdateInfoOnMainThread:) withObject:appInfo waitUntilDone:NO];
             [SVProgressHUD dismiss];
+
         }
         else
         {

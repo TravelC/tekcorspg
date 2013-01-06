@@ -2,6 +2,8 @@
 #import <CoreLocation/CLLocationManager.h>
 
 
+#undef DEBUG
+
 
 @interface FixedLocationData : NSObject
 {

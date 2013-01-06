@@ -11,7 +11,9 @@
 
 
 #define APP_KEY_UMENG   @"50e6decf527015180c000011"
-#define DEBUG
+
+
+#define WEIPHONE
 
 
 #ifdef DEBUG

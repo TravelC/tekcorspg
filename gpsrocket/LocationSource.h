@@ -35,6 +35,8 @@
 
 @end
 
+
+//TravelingLocationSource
 @interface TravelingLocationSource: LocationSource
 {
 }

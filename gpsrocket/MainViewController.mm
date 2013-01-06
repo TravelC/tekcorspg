@@ -9,6 +9,7 @@
 
 @implementation MainViewController
 @synthesize mMapView;
+@synthesize mDeviceLocationBarButtonItem;
 @synthesize mStartStopBarButtonItem;
 @synthesize mTraveledLocationBarButtonItem;
 @synthesize mGlobalLocationButton;
@@ -16,9 +17,14 @@
 @synthesize mDeviceLocationAnnotation;
 @synthesize mTraveledLocationAnnotation;
 @synthesize mCircle;
-@synthesize mRegularLocationSource;
+@synthesize mTravelingLocationSource;
 @synthesize mTrueLocationSource;
 @synthesize mAppearedBefore;
+
+@synthesize mLocationDelta;
+
+@synthesize mIsInChina;;
+@synthesize mLocationEnabled;
 
 - (id) init
 {
@@ -26,17 +32,20 @@
     if (self)
     {
         self.mAppearedBefore = NO;
+        self.mIsInChina = [self isInChina];
+        self.mLocationEnabled = NO;
         
         //1. setting return text for navigation controller push
         UIBarButtonItem *temporaryBarButtonItem = [[UIBarButtonItem alloc] init];
-        temporaryBarButtonItem.title = @"返回";
+        temporaryBarButtonItem.title = NSLocalizedString(@"Return", nil);
         self.navigationItem.backBarButtonItem = temporaryBarButtonItem;
         [temporaryBarButtonItem release];
 
         //2. set bar items on navigation bar; ver weird tool bar items setting here does not work.
-        self.title = @"GPS穿越器";
+        self.title = [[NSBundle mainBundle] objectForInfoDictionaryKey:@"CFBundleDisplayName"];
         
         UIButton* sButton = [UIButton buttonWithType:UIButtonTypeInfoLight];
+        sButton.showsTouchWhenHighlighted = NO;
         [sButton addTarget:self action:@selector(presentAboutController) forControlEvents:UIControlEventTouchDown];
         UIBarButtonItem* sAboutBarButton = [[UIBarButtonItem alloc]initWithCustomView:sButton];
         self.navigationItem.rightBarButtonItem = sAboutBarButton;
@@ -45,11 +54,11 @@
         
         
         //3. set annotation.
-        self.mDeviceLocationAnnotation = [[[MyLocationAnnotation alloc] initWithTitle:@"当前位置"] autorelease];
-        self.mTraveledLocationAnnotation = [[[MyLocationAnnotation alloc] initWithTitle:@"穿越位置"] autorelease];
+        self.mDeviceLocationAnnotation = [[[MyLocationAnnotation alloc] initWithTitle:NSLocalizedString(@"Current Location", nil)] autorelease];
+        self.mTraveledLocationAnnotation = [[[MyLocationAnnotation alloc] initWithTitle:NSLocalizedString(@"Target Location", nil)] autorelease];
 
         //set location source
-        self.mRegularLocationSource = [LocationSource getRegularLocationSource];
+        self.mTravelingLocationSource = [LocationSource getRegularLocationSource];
         self.mTrueLocationSource = [LocationSource getTrueLocationSource];
         self.mTrueLocationSource.mDelegate = self;
         
@@ -62,6 +71,7 @@
 - (void) dealloc
 {
     self.mMapView = nil;
+    self.mDeviceLocationBarButtonItem = nil;
     self.mStartStopBarButtonItem = nil;
     self.mTraveledLocationBarButtonItem = nil;
     self.mGlobalLocationButton = nil;
@@ -69,8 +79,10 @@
     self.mCircle = nil;
     self.mDeviceLocationAnnotation = nil;
     self.mTraveledLocationAnnotation = nil;
-    self.mRegularLocationSource = nil;
+    self.mTravelingLocationSource = nil;
     self.mTrueLocationSource = nil;
+    
+    self.mLocationDelta = nil;
     
     [super dealloc];
 }
@@ -94,7 +106,9 @@
     MKMapView* sMapView = [[MKMapView alloc] initWithFrame:self.view.bounds];
     [sMapView setMapType:MKMapTypeStandard];
     sMapView.delegate = self;
-//    sMapView.showsUserLocation = YES;
+    sMapView.showsUserLocation = YES;
+//    [sMapView setUserTrackingMode:MKUserTrackingModeFollow animated:NO];
+    [sMapView.userLocation addObserver:self forKeyPath:@"location" options:(NSKeyValueObservingOptionNew|NSKeyValueObservingOptionOld) context:nil];
     
     [self.view addSubview: sMapView];
     self.mMapView = sMapView;
@@ -114,6 +128,7 @@
     sLabel.backgroundColor = [UIColor clearColor];
     sLabel.textColor = [UIColor whiteColor];
     sLabel.font = [UIFont systemFontOfSize: 13];
+    sLabel.numberOfLines = 0;
     [sInfoboardView addSubview:sLabel];
     self.mInfoBoardLabel = sLabel;
     [sLabel release];
@@ -121,8 +136,10 @@
     [self.view addSubview:sInfoboardView];
     [sInfoboardView release];
     
-    
 }
+
+
+
 
 - (void) viewDidLoad
 {
@@ -130,7 +147,8 @@
     
     [self.navigationController setToolbarHidden: NO animated: NO];
 
-    UIBarButtonItem* sCurrentLocationBarButtonItem = [[UIBarButtonItem alloc] initWithImage: [UIImage imageNamed:@"current_location20.png"] style:UIBarButtonItemStylePlain target:self action:@selector(centerDeviceLocation)];
+    UIBarButtonItem* sCurrentLocationBarButtonItem = [[UIBarButtonItem alloc] initWithImage: [UIImage imageNamed:@"current_location20.png"] style:UIBarButtonItemStylePlain target:self action:@selector(showDeviceLocationView)];
+    self.mDeviceLocationBarButtonItem = sCurrentLocationBarButtonItem;
     
     UIBarButtonItem* sSpacerBarButtonItem =
     [[UIBarButtonItem alloc] initWithBarButtonSystemItem:UIBarButtonSystemItemFlexibleSpace target:nil action:nil ];
@@ -142,7 +160,7 @@
     UIBarButtonItem* sSpacerBarButtonItem2 =
     [[UIBarButtonItem alloc] initWithBarButtonSystemItem:UIBarButtonSystemItemFlexibleSpace target:nil action:nil ];
     
-    UIBarButtonItem* sTraveledLocationBarButtonItem = [[UIBarButtonItem alloc] initWithImage: [UIImage imageNamed:@"travelinglocation20.png"] style: UIBarButtonItemStylePlain target:self action:@selector(centerTraveledLocationIfSet)];
+    UIBarButtonItem* sTraveledLocationBarButtonItem = [[UIBarButtonItem alloc] initWithImage: [UIImage imageNamed:@"travelinglocation20.png"] style: UIBarButtonItemStylePlain target:self action:@selector(showTravelingLocationView)];
     self.mTraveledLocationBarButtonItem = sTraveledLocationBarButtonItem;
     
     [self setToolbarItems: [NSArray arrayWithObjects: sCurrentLocationBarButtonItem, sSpacerBarButtonItem, sStartStopBarButtonItem, sSpacerBarButtonItem2, sTraveledLocationBarButtonItem, nil] animated: YES];
@@ -171,49 +189,29 @@
 //    sLongPressGenstureRecognizer.minimumPressDuration = 0.4;
     [self.mMapView addGestureRecognizer:sLongPressGenstureRecognizer];
     [sLongPressGenstureRecognizer release];
+    
+    
+    [self refreshTravelingLocationAvailablityStatus];
+    [self refreshTravelingStatusNotice];
+
 
 }
 
 - (void)viewWillAppear:(BOOL)animated
 {
     [super viewWillAppear: animated];
-    [self refreshAll];
-    
-    //
     if (!self.mAppearedBefore)
     {
-        [self addAnnotations];
-        [self addOverlay];
-        if ([LocationTravelingService isTraveling])
-        {
-            [self centerTraveledLocationIfSetWithSelection:NO];
-        }
-        else
-        {
-            [self showGlobalView];
-        }
+//        [self refreshTravelingLocationAvailablityStatus];
+//        [self refreshTravelingStatusNotice];
     }
+   
 }
 
 - (void)viewDidAppear:(BOOL)animated
 {
-    [super viewDidAppear: animated];
-    
-    //
-    if (!self.mAppearedBefore)
-    {
-        if ([LocationTravelingService isTraveling])
-        {
-            [self.mMapView selectAnnotation:self.mTraveledLocationAnnotation animated:YES];
-        }
-        else
-        {
-//            [self.mMapView selectAnnotation:self.mDeviceLocationAnnotation animated:YES];
-        }
-        self.mAppearedBefore = YES;
-    }
+    [super viewDidAppear: animated];    
 }
-
 
 
 - (void) refreshTravelingLocationAvailablityStatus
@@ -228,20 +226,92 @@
     }
 }
 
+- (void) refreshTravelingStatusNotice
+{
+    if ([LocationTravelingService isTraveling])
+    {
+        self.mStartStopBarButtonItem.image = [UIImage imageNamed:@"pause20.png"];
+        self.mInfoBoardLabel.text = NSLocalizedString(@"Exploring On...", nil);
+    }
+    else
+    {
+        self.mStartStopBarButtonItem.image = [UIImage imageNamed:@"play20.png"];
+        self.mInfoBoardLabel.text =  NSLocalizedString(@"Exploring Off...", nil);
+    }
+}
+
+- (void) refreshWhenLocationEnabledChange
+{
+    if (self.mLocationEnabled)
+    {
+        self.mDeviceLocationBarButtonItem.enabled = YES;
+        [self refreshTravelingLocationAvailablityStatus];
+        self.mStartStopBarButtonItem.enabled = YES;
+        self.mGlobalLocationButton.enabled = YES;
+        
+        [self refreshTravelingStatusNotice];
+    }
+    else
+    {
+        self.mDeviceLocationBarButtonItem.enabled = NO;
+        self.mTraveledLocationBarButtonItem.enabled = NO;
+        self.mStartStopBarButtonItem.enabled = NO;
+        self.mGlobalLocationButton.enabled = NO;
+        
+        self.mInfoBoardLabel.text =  NSLocalizedString(@"Location service unvailable, check your settings please.", nil);
+    }
+}
+
+#pragma mark - mapview decoration methods
+////////////////////////////////////////////////////
+- (void) decorateMapview
+{
+    if (!self.mAppearedBefore)
+    {
+        [self addAnnotations];
+        [self addOverlay];
+        
+        if ([LocationTravelingService isTraveling])
+        {
+            [self showTravelingLocationViewWithAnnotation:NO];
+            [self selectAnnotation:self.mTraveledLocationAnnotation AfterDelay:2];
+        }
+        else
+        {
+            [self showGlobalView];
+        }
+                
+        self.mAppearedBefore = YES;
+    }
+
+}
 
 - (void) addAnnotations
 {
     CLLocation* sDeviceLocation = [self.mTrueLocationSource getMostRecentLocation];
+        
     if (sDeviceLocation)
     {
-        self.mDeviceLocationAnnotation.mCoordinate = sDeviceLocation.coordinate;
+        CLLocationCoordinate2D sAdjustedDeviceCoordinate = [self adjustLocationCoordinate: sDeviceLocation.coordinate Reverse: NO];
+        self.mDeviceLocationAnnotation.mCoordinate = sAdjustedDeviceCoordinate;
         [self.mMapView addAnnotation:self.mDeviceLocationAnnotation];
     }
 
-    CLLocation* sTravlingLocation = [self.mRegularLocationSource getMostRecentLocation];
+    CLLocation* sTravlingLocation = [self.mTravelingLocationSource getMostRecentLocation];
+    
     if (sTravlingLocation)
     {
-        self.mTraveledLocationAnnotation.mCoordinate  = sTravlingLocation.coordinate;
+#ifdef DEBUG
+        NSLog(@"_________B1:sTravlingLocation.coordinate: %@：%.4f \t %@：%.4f",NSLocalizedString(@"Longitude", nil), sTravlingLocation.coordinate.longitude, NSLocalizedString(@"Latitude", nil), sTravlingLocation.coordinate.latitude);
+#endif
+        
+        CLLocationCoordinate2D sAdjustedTravelingCoordinate = [self adjustLocationCoordinate: sTravlingLocation.coordinate Reverse: NO];
+#ifdef DEBUG
+        NSLog(@"_________B2:sAdjustedTravelingCoordinate: %@：%.4f \t %@：%.4f",NSLocalizedString(@"Longitude", nil), sAdjustedTravelingCoordinate.longitude, NSLocalizedString(@"Latitude", nil), sAdjustedTravelingCoordinate.latitude);
+#endif
+
+        
+        self.mTraveledLocationAnnotation.mCoordinate  = sAdjustedTravelingCoordinate;
         [self.mMapView addAnnotation:self.mTraveledLocationAnnotation];
     }
 }
@@ -250,42 +320,21 @@
 {
     CLLocation* sDeviceLocation = [self.mTrueLocationSource getMostRecentLocation];
 
-    self.mCircle = [MKCircle circleWithCenterCoordinate:sDeviceLocation.coordinate radius:TRAVELING_DISTNACE_ALLOWED];
+    CLLocation* sAdjustedDeviceLocation = [self adjustLocation: sDeviceLocation];
+    
+    self.mCircle = [MKCircle circleWithCenterCoordinate:sAdjustedDeviceLocation.coordinate radius:TRAVELING_DISTNACE_ALLOWED];
     
     [self.mMapView addOverlay:self.mCircle];
 }
 
-- (void) switchTravelingStatusNotice
-{
-    if ([LocationTravelingService isTraveling])
-    {
-        self.mStartStopBarButtonItem.image = [UIImage imageNamed:@"pause20.png"];
-        self.mInfoBoardLabel.text = @"您正在穿越...";
-    }
-    else
-    {
-        self.mStartStopBarButtonItem.image = [UIImage imageNamed:@"play20.png"];
-        self.mInfoBoardLabel.text = @"已退出穿越";
-    }
-}
 
-
-- (void) refreshAll
-{
-    [self refreshTravelingLocationAvailablityStatus];
-    [self switchTravelingStatusNotice];
-}
-
-- (void) presentHistoryController
-{
-    //test
-    return;
-}
+#pragma mark - about controller methods
+////////////////////////////////////////////////////
 
 - (void) presentAboutController
 {
-    AboutViewController* sAboutViewController = [[AboutViewController alloc] initWithTitle:@"关于"];
-    UIBarButtonItem *sReturnButton = [[UIBarButtonItem alloc] initWithTitle:NSLocalizedString(@"完成", nil) style:UIBarButtonItemStylePlain target:self action:@selector(returnToMainController)];
+    AboutViewController* sAboutViewController = [[AboutViewController alloc] initWithTitle:NSLocalizedString(@"About", nil)];
+    UIBarButtonItem *sReturnButton = [[UIBarButtonItem alloc] initWithTitle:NSLocalizedString(@"Done", nil) style:UIBarButtonItemStylePlain target:self action:@selector(returnToMainController)];
     sAboutViewController.navigationItem.rightBarButtonItem = sReturnButton;
     [sReturnButton release];
     
@@ -319,12 +368,16 @@
     return;
 }
 
+
+#pragma mark - methods respoding to user events
+////////////////////////////////////////////////////
+
 - (void) startOrStopTraveling
 {
     if ([LocationTravelingService isTraveling])
     {
         [LocationTravelingService stopTraveling];
-        [self switchTravelingStatusNotice];
+        [self refreshTravelingStatusNotice];
         [self.mMapView deselectAnnotation:self.mTraveledLocationAnnotation animated:YES];
         [[self.mMapView viewForAnnotation:self.mTraveledLocationAnnotation] setNeedsDisplay];
     }
@@ -333,16 +386,18 @@
         if ([LocationTravelingService isFixedLocationAvaliable])
         {
             [LocationTravelingService startTraveling];
-            [self centerTraveledLocationIfSet];
-            [self switchTravelingStatusNotice];
+            [self showTravelingLocationView];
+            [self refreshTravelingStatusNotice];
             [self.mMapView selectAnnotation:self.mTraveledLocationAnnotation animated:YES];
             [[self.mMapView viewForAnnotation:self.mTraveledLocationAnnotation] setNeedsDisplay];
         }
         else
         {
+#ifdef DEBUG
             NSLog(@"You MUST set a traveling location first.");
-            NSString* sNotice = @"请用手指长按蓝色圆圈范围内，以选取穿越位置";
-            UIAlertView *alert = [[UIAlertView alloc] initWithTitle:@"温馨提醒" message:sNotice 	delegate:nil cancelButtonTitle:@"Ok" otherButtonTitles:nil];
+#endif
+            NSString* sNotice = NSLocalizedString(@"To set target location, please long press the map in the area of the blue circle", nil);
+            UIAlertView *alert = [[UIAlertView alloc] initWithTitle:NSLocalizedString(@"Notice", nil) message:sNotice 	delegate:nil cancelButtonTitle:NSLocalizedString(@"OK", nil) otherButtonTitles:nil];
             [alert show];
             [alert release];
 
@@ -350,39 +405,131 @@
     }
 }
 
-- (void) centerTraveledLocationIfSetWithSelection:(BOOL)aSelecting
+- (void)longPressOnMapview:(UIGestureRecognizer *)gestureRecognizer
+{
+    if (gestureRecognizer.state != UIGestureRecognizerStateBegan)
+        return;
+    
+    CGPoint sTouchPoint = [gestureRecognizer locationInView:self.mMapView];
+    CLLocationCoordinate2D sTouchMapCoordinate = [self.mMapView convertPoint:sTouchPoint toCoordinateFromView:self.mMapView];
+    
+    if ([self canSetTravelingLocationAt: [[[CLLocation alloc] initWithLatitude:sTouchMapCoordinate.latitude longitude: sTouchMapCoordinate.longitude] autorelease]])
+    {
+        
+        //0. adjust touched location
+        CLLocationCoordinate2D sAdjustedTouchCoordinate2D = [self adjustLocationCoordinate: sTouchMapCoordinate Reverse:YES];
+        
+        //1. remove the last annotation
+        [self.mMapView removeAnnotation:self.mTraveledLocationAnnotation];
+        
+        //2. update mTraveledLocationAnnotation's location
+        self.mTraveledLocationAnnotation.mCoordinate = sTouchMapCoordinate;
+        
+        //3. enable travling location view button if needed
+        if (![LocationTravelingService isFixedLocationAvaliable])
+        {
+            self.mTraveledLocationBarButtonItem.enabled = YES;
+        }
+        
+        //4. add new annotation
+        [self.mMapView addAnnotation: self.mTraveledLocationAnnotation];
+        
+        //5. update new fixed location.
+        [LocationTravelingService setFixedLocation:[[[CLLocation alloc] initWithLatitude:sAdjustedTouchCoordinate2D.latitude longitude: sAdjustedTouchCoordinate2D.longitude] autorelease]];
+        
+        //6. select new annotation to show its annotationview
+        [self.mMapView selectAnnotation:self.mTraveledLocationAnnotation animated:YES];
+        
+    }
+    else
+    {
+//        NSLog(@"Sorry, for the time being, you can only travel within the shadow circle.");
+        NSString* sNotice = [NSString stringWithFormat:NSLocalizedString(@"For now, you can only explore places within %d kilometer(s). Update and explore around the globe.", nil), TRAVELING_DISTNACE_ALLOWED/1000];
+        UIAlertView *alert = [[UIAlertView alloc] initWithTitle:NSLocalizedString(@"Notice",nil) message:sNotice 	delegate:nil cancelButtonTitle:@"Ok" otherButtonTitles:nil];
+        [alert show];
+        [alert release];
+    }
+}
+
+#pragma mark - utility methods
+////////////////////////////////////////////////////
+
+- (void) selectAnnotationImp:(NSTimer*)timer
+{
+    NSDictionary* sDict = [timer userInfo];
+    
+    id<MKAnnotation> sAnnotation = [sDict objectForKey:@"annotation"];
+    
+    if (sAnnotation)
+    {
+        [self.mMapView selectAnnotation:sAnnotation animated:YES];
+    }
+}
+
+- (void) selectAnnotation:(id<MKAnnotation>)aAnnotation AfterDelay:(NSTimeInterval)aSeconds
+{
+    
+    NSDictionary* sDict = [NSDictionary dictionaryWithObject: aAnnotation forKey:@"annotation"];
+    NSTimer* sTimer = [[[NSTimer alloc] initWithFireDate: [NSDate dateWithTimeIntervalSinceNow:aSeconds]interval:0 target:self selector: @selector(selectAnnotationImp:) userInfo:sDict repeats:NO] autorelease];
+    
+    [[NSRunLoop currentRunLoop] addTimer:sTimer forMode:NSDefaultRunLoopMode];
+}
+
+- (BOOL) isInChina
+{
+    NSLocale *locale = [NSLocale currentLocale];
+    NSString *countryCode = [locale objectForKey: NSLocaleCountryCode];
+ 
+#ifdef DEBUG
+    NSString *countryName = [locale displayNameForKey: NSLocaleCountryCode value:countryCode];
+    NSLog(@"countryCode: %@ \tcountryName: %@", countryCode, countryName);
+#endif
+    
+    if ([countryCode isEqualToString:@"CN"])
+    {
+        return YES;
+    }
+    else
+    {
+        return NO;
+    }
+}
+
+#pragma mark - view showing methods
+///////////////////////////////////////////////////////////////////////////////
+- (void) showTravelingLocationViewWithAnnotation:(BOOL)aAnnotaionOn
 {
     if ([LocationTravelingService isFixedLocationAvaliable])
     {
-        CLLocation* sLocation = [self.mRegularLocationSource getMostRecentLocation];
+        CLLocation* sLocation = [self.mTravelingLocationSource getMostRecentLocation];
         [self goToLocation: sLocation];
-        if (aSelecting)
+        if (aAnnotaionOn)
         {
             [self.mMapView selectAnnotation:self.mTraveledLocationAnnotation animated:YES];
         }
     }
 }
 
-- (void) centerDeviceLocationWithSelection:(BOOL)aSelecting
+- (void) showDeviceLocationViewWithAnnotation:(BOOL)aAnnotationOn
 {
     CLLocation* sLocation = [self.mTrueLocationSource getMostRecentLocation];
 
     [self goToLocation: sLocation];
-    if (aSelecting)
+    if (aAnnotationOn)
     {
         [self.mMapView selectAnnotation:self.mDeviceLocationAnnotation animated:YES];  
     }
 
 }
 
-- (void) centerTraveledLocationIfSet
+- (void) showTravelingLocationView
 {
-    [self centerTraveledLocationIfSetWithSelection: YES];
+    [self showTravelingLocationViewWithAnnotation: YES];
 }
 
-- (void) centerDeviceLocation
+- (void) showDeviceLocationView
 {
-    [self centerDeviceLocationWithSelection: YES];
+    [self showDeviceLocationViewWithAnnotation: YES];
 }
 
 -(void) showGlobalView
@@ -405,55 +552,17 @@
 - (void) goToLocation: (CLLocation*)aLocation span:(MKCoordinateSpan)aSpan animated:(BOOL)animated
 {    
     MKCoordinateRegion sRegion;
-    sRegion.center = aLocation.coordinate;
+    
+    CLLocationCoordinate2D sAdjustedCoordinate2D = [self adjustLocationCoordinate:aLocation.coordinate Reverse:NO];
+    
+    sRegion.center = sAdjustedCoordinate2D;
     sRegion.span = aSpan;
     
     [self.mMapView setRegion: sRegion animated: animated];
 }
 
-- (void)longPressOnMapview:(UIGestureRecognizer *)gestureRecognizer
-{
-    if (gestureRecognizer.state != UIGestureRecognizerStateBegan)
-        return;
-    
-    CGPoint sTouchPoint = [gestureRecognizer locationInView:self.mMapView];
-    CLLocationCoordinate2D sTouchMapCoordinate = [self.mMapView convertPoint:sTouchPoint toCoordinateFromView:self.mMapView];
-    
-    if ([self canSetTravelingLocationAt: [[[CLLocation alloc] initWithLatitude:sTouchMapCoordinate.latitude longitude: sTouchMapCoordinate.longitude] autorelease]])
-    {
-        //1. remove the last annotation
-        [self.mMapView removeAnnotation:self.mTraveledLocationAnnotation];
-        
-        //2. update mTraveledLocationAnnotation's location
-        self.mTraveledLocationAnnotation.mCoordinate = sTouchMapCoordinate;
-        
-        //3. enable travling location view button if needed
-        if (![LocationTravelingService isFixedLocationAvaliable])
-        {
-            self.mTraveledLocationBarButtonItem.enabled = YES;
-        }
-        
-        //4. add new annotation
-        [self.mMapView addAnnotation: self.mTraveledLocationAnnotation];
-        
-        //5. update new fixed location.
-        [LocationTravelingService setFixedLocation:[[[CLLocation alloc] initWithLatitude: sTouchMapCoordinate.latitude longitude: sTouchMapCoordinate.longitude] autorelease]];
-        
-        //6. select new annotation to show its annotationview
-        [self.mMapView selectAnnotation:self.mTraveledLocationAnnotation animated:YES];
 
-    }
-    else
-    {
-        NSLog(@"Sorry, for the time being, you can only travel within the shadow circle.");
-        NSString* sNotice = [NSString stringWithFormat:@"您现在的穿越范围是%dkm（蓝色圆圈以内），请下载新版本以扩大范围", TRAVELING_DISTNACE_ALLOWED/1000];
-        UIAlertView *alert = [[UIAlertView alloc] initWithTitle:@"温馨提醒" message:sNotice 	delegate:nil cancelButtonTitle:@"Ok" otherButtonTitles:nil];
-        [alert show];
-        [alert release];
-
-    }
-}
-
+#pragma mark - location set control
 - (BOOL) canSetTravelingLocationAt:(CLLocation*)aLocation
 {
     CLLocation* sCurrentLocation = [self.mTrueLocationSource getMostRecentLocation];
@@ -467,7 +576,7 @@
     else
     {
         //test
-//        return YES;
+//       // return YES;
         return NO;
     }
 }
@@ -510,6 +619,14 @@
 */
 
 #pragma mark - MKMapViewDelegate methods
+
+-(void)mapView:(MKMapView *)mapView didAddAnnotationViews:(NSArray *)views
+{
+    //hide annotation view for userLocation.
+    MKAnnotationView *ulv = [mapView viewForAnnotation:mapView.userLocation];
+    ulv.hidden = YES;
+}
+
 - (MKAnnotationView *)mapView:(MKMapView *)theMapView viewForAnnotation:(id <MKAnnotation>)annotation
 {
     // if it's the user location, just return nil.
@@ -564,6 +681,133 @@
     //Uncomment below to fill in the circle
 //    circleView.fillColor = [UIColor redColor];
     return circleView;
+}
+
+
+#pragma mark - location drift fix
+///////////////////////////////////////////////////////////////////////////////
+
+//for now, we adjust location based on the delta of the userlocation of mapview and the device location(if it's not traveling),or that of the userlocation of mapview and the traveling location(if it's traveling).  cos the mars coordinate's delta changes dramatically for locations not near. so this delta-of-near-location-based method works only when device location and traveling location are in the same small region.
+- (CLLocationCoordinate2D) adjustLocationCoordinate:(CLLocationCoordinate2D)aCLLocationCoordinate2D Reverse:(BOOL)aReverse
+{
+    if (self.mIsInChina
+        && self.mLocationDelta)
+    {
+        //        NSLog(@"ori: %@：%.4f \t %@：%.4f",NSLocalizedString(@"Longitude", nil), aCLLocationCoordinate2D.longitude, NSLocalizedString(@"Latitude", nil), aCLLocationCoordinate2D.latitude);
+        //
+        
+        //        NSLog(@"delta: %@：%.4f \t %@：%.4f",NSLocalizedString(@"Longitude", nil), self.mLocationDelta.coordinate.longitude, NSLocalizedString(@"Latitude", nil), self.mLocationDelta.coordinate.latitude);
+        
+        
+        CLLocationCoordinate2D sCoordindate2D;
+        if (!aReverse)
+        {
+            sCoordindate2D.latitude = aCLLocationCoordinate2D.latitude + self.mLocationDelta.coordinate.latitude;
+            sCoordindate2D.longitude = aCLLocationCoordinate2D.longitude + self.mLocationDelta.coordinate.longitude;
+        }
+        else
+        {
+            sCoordindate2D.latitude = aCLLocationCoordinate2D.latitude - self.mLocationDelta.coordinate.latitude;
+            sCoordindate2D.longitude = aCLLocationCoordinate2D.longitude - self.mLocationDelta.coordinate.longitude;
+        }
+        
+        //        NSLog(@"adjusted: %@：%.4f \t %@：%.4f",NSLocalizedString(@"Longitude", nil), sCoordindate2D.longitude, NSLocalizedString(@"Latitude", nil), sCoordindate2D.latitude);
+        return sCoordindate2D;
+    }
+    else
+    {
+        return aCLLocationCoordinate2D;
+    }
+}
+
+- (CLLocation*) adjustLocation:(CLLocation*)aLocation
+{
+    CLLocationCoordinate2D sCoordindate2D = [self adjustLocationCoordinate:aLocation.coordinate Reverse:NO];
+    
+    CLLocation* sLocation = [[[CLLocation alloc] initWithCoordinate:sCoordindate2D altitude:aLocation.altitude horizontalAccuracy:aLocation.horizontalAccuracy verticalAccuracy:aLocation.verticalAccuracy timestamp:aLocation.timestamp] autorelease];
+    
+    return sLocation;
+}
+
+- (void) onDriftUpdated
+{
+    [self decorateMapview];
+}
+
+- (void) updateLocationDrift:(CLLocation*)aAdjustedRegularLocation
+{
+    if (!self.mLocationDelta
+        || self.mLocationDelta.altitude == -1)
+    {
+        CLLocation* sOriginalLocation = nil;
+        CLLocationDistance sTagForLocationDeltaType = 0;
+        
+        if (![LocationTravelingService isTraveling])
+        {
+            sOriginalLocation = [self.mTrueLocationSource getMostRecentLocation];
+            sTagForLocationDeltaType = 1;
+            
+        }
+        else
+        {
+            if (!self.mLocationDelta)
+            {
+                sOriginalLocation = [self.mTravelingLocationSource getMostRecentLocation];
+                sTagForLocationDeltaType = -1;
+            }
+            else
+            {
+                return;
+            }
+        }
+        
+        CLLocationCoordinate2D sCoordindate2D;
+        
+        sCoordindate2D.latitude = aAdjustedRegularLocation.coordinate.latitude - sOriginalLocation.coordinate.latitude;
+        sCoordindate2D.longitude = aAdjustedRegularLocation.coordinate.longitude - sOriginalLocation.coordinate.longitude;
+        CLLocation* sLocationDelta = [[CLLocation alloc] initWithCoordinate:sCoordindate2D altitude:sTagForLocationDeltaType horizontalAccuracy:0 verticalAccuracy:-1 timestamp: [NSDate date]];
+        
+        self.mLocationDelta = sLocationDelta;
+        
+        [sLocationDelta release];
+        
+        //
+        [self onDriftUpdated];
+    }
+}
+
+- (void)observeValueForKeyPath:(NSString *)keyPath ofObject:(id)object change:(NSDictionary *)change context:(void *)context
+{
+    
+    CLLocation* sAdjustedRegularLocation = self.mMapView.userLocation.location;
+    
+#ifdef DEBUG
+    NSLog(@"mMapView.userLocation: %@：%.4f \t %@：%.4f",NSLocalizedString(@"Longitude", nil), sAdjustedRegularLocation.coordinate.longitude, NSLocalizedString(@"Latitude", nil), sAdjustedRegularLocation.coordinate.latitude);
+#endif
+    
+    if (!self.mLocationEnabled
+        && fabs(sAdjustedRegularLocation.coordinate.latitude) < 0.1
+        && fabs(sAdjustedRegularLocation.coordinate.longitude) < 0.1)
+    {
+        [self refreshWhenLocationEnabledChange];
+        return;
+    }
+    else
+    {
+        self.mLocationEnabled = YES;
+        [self refreshWhenLocationEnabledChange];
+        
+        // 这里就是偏移后的坐标，与用户实际坐标相减，就是当前位置的坐标偏移值
+        if (self.mIsInChina)
+        {
+            [self updateLocationDrift: sAdjustedRegularLocation];
+        }
+        else
+        {
+            [self decorateMapview];
+        }
+    }
+    
 }
 
 

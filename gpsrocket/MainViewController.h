@@ -10,6 +10,7 @@
 {
     MKMapView* mMapView;
     
+    UIBarButtonItem* mDeviceLocationBarButtonItem;
     UIBarButtonItem* mStartStopBarButtonItem;
     UIBarButtonItem* mTraveledLocationBarButtonItem;
     UIButton* mGlobalLocationButton;
@@ -21,13 +22,19 @@
     
     MKCircle* mCircle;
 
-    LocationSource* mRegularLocationSource;
+    LocationSource* mTravelingLocationSource;
     LocationSource* mTrueLocationSource;
     
     BOOL mAppearedBefore;
+    
+    CLLocation* mLocationDelta;
+    
+    BOOL mIsInChina;
+    BOOL mLocationEnabled;
 }
 
 @property (nonatomic, retain)  MKMapView* mMapView;
+@property (nonatomic, retain)  UIBarButtonItem* mDeviceLocationBarButtonItem;
 @property (nonatomic, retain)  UIBarButtonItem* mStartStopBarButtonItem;
 @property (nonatomic, retain)  UIBarButtonItem* mTraveledLocationBarButtonItem;
 @property (nonatomic, retain)  UIButton* mGlobalLocationButton;
@@ -38,27 +45,48 @@
 
 @property (nonatomic, retain)  MKCircle* mCircle;
 
-@property (nonatomic, retain)  LocationSource* mRegularLocationSource;
+@property (nonatomic, retain)  LocationSource* mTravelingLocationSource;
 @property (nonatomic, retain)  LocationSource* mTrueLocationSource;
 
 @property (nonatomic, assign)  BOOL mAppearedBefore;
 
-- (void) refreshAll;
+@property (nonatomic, retain)  CLLocation* mLocationDelta;
+
+@property (nonatomic, assign)  BOOL mIsInChina;
+
+@property (nonatomic, assign)  BOOL mLocationEnabled;
 
 - (BOOL) canSetTravelingLocationAt:(CLLocation*)aLocation;
 
-
+- (void) decorateMapview;
 - (void) addAnnotations;
 - (void) addOverlay;
 
+- (void) refreshTravelingLocationAvailablityStatus;
+- (void) refreshTravelingStatusNotice;
 
-- (void) centerTraveledLocationIfSet;
-- (void) centerDeviceLocation;
+//utility methods
+- (void) selectAnnotation:(id<MKAnnotation>)aAnnotation AfterDelay:(NSTimeInterval)aSeconds;
+- (BOOL) isInChina;
+
+
+//view showing
+- (void) showTravelingLocationView;
+- (void) showDeviceLocationView;
 - (void) showGlobalView;
-
-- (void) centerDeviceLocationWithSelection:(BOOL)aSelecting;
-- (void) centerTraveledLocationIfSetWithSelection:(BOOL)aSelecting;
+- (void) showTravelingLocationViewWithAnnotation:(BOOL)aAnnotaionOn;
 
 - (void) goToLocation: (CLLocation*)aLocation;
 - (void) goToLocation: (CLLocation*)aLocation span:(MKCoordinateSpan)aSpan animated:(BOOL)animated;
+
+//location set control
+- (BOOL) canSetTravelingLocationAt:(CLLocation*)aLocation;
+
+
+
+//location drift fix.
+- (CLLocationCoordinate2D) adjustLocationCoordinate:(CLLocationCoordinate2D)aCLLocationCoordinate2D Reverse:(BOOL)aReverse;
+- (CLLocation*) adjustLocation:(CLLocation*)aLocation;
+
+
 @end

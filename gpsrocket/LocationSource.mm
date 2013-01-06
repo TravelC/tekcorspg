@@ -79,20 +79,15 @@
 #pragma mark - CLLocationManagerDelegate methods
 - (void)locationManager:(CLLocationManager *)manager didUpdateToLocation:(CLLocation *)newLocation fromLocation:(CLLocation *)oldLocation
 {
-    
-    
     if (newLocation.coordinate.latitude != mMostRecentLocation.coordinate.latitude
         || newLocation.coordinate.longitude !=  mMostRecentLocation.coordinate.longitude)
     {
         [mMostRecentLocation release];
         mMostRecentLocation = [newLocation retain];
-        NSLog(@"xxxxxxxxxxxxx");
 
         if (self.mDelegate
             && [self.mDelegate respondsToSelector:@selector(locationSource:withNewLocation:oldLocation:)])
         {
-            NSLog(@"yyyyyyyyy");
-
             [self.mDelegate locationSource:self withNewLocation:newLocation oldLocation:oldLocation];
         }
     }

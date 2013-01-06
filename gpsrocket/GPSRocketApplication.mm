@@ -13,6 +13,14 @@
 
 @implementation GPSRocketApplication
 @synthesize window = _window;
+
+
+- (void) checkUpdateAutomatically
+{
+    [MobClick checkUpdate:NSLocalizedString(@"New Version Found", nil) cancelButtonTitle:NSLocalizedString(@"Skip", nil) otherButtonTitles:NSLocalizedString(@"Update now", nil)];
+}
+
+
 - (void)applicationDidFinishLaunching:(UIApplication *)application
 {
 	_window = [[UIWindow alloc] initWithFrame:[[UIScreen mainScreen] bounds]];
@@ -24,6 +32,8 @@
 
     //UMeng SDK invocation
     [MobClick startWithAppkey:APP_KEY_UMENG reportPolicy:REALTIME channelId:CHANNEL_ID];
+    
+    [self checkUpdateAutomatically];
 
 }
 
@@ -32,6 +42,10 @@
 	[_window release];
 	[super dealloc];
 }
+
+
+
+
 @end
 
 // vim:ft=objc

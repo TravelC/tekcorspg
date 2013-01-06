@@ -1,6 +1,7 @@
 #import "MyLocationManagerDelegate.h"
 
 
+
 @implementation FixedLocationData
 
 @synthesize mTimestamp;
@@ -47,7 +48,9 @@
     if (mDelegate)
     {
         NSString* sClassName = NSStringFromClass([mDelegate class]);
+#ifdef DEBUG
         NSLog(@"class name: %@", sClassName);
+#endif
         if ([sClassName isEqualToString: @"TrueLocationSource20121229"]) //"TrueLocationSource20121229" is the class name of the delegate who need the true location in GPSRocket.app.
         {
             self.mNeedsTrueLocation = YES;
